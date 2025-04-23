@@ -1,5 +1,6 @@
 env: "local" # local, dev, prod
 storage_path: "./storage/storage.db"
+db_scheme_path: "./storage/db_scheme.sql"
 http_server:
   address: "localhost:8080"
   timeout: 4s
