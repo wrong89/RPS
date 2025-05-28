@@ -1,0 +1,3 @@
+DROP TABLE player CASCADE;
+DROP TABLE statistic CASCADE;
+DROP TABLE player_statistic CASCADE;
