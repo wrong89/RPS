@@ -56,7 +56,7 @@ func TestValidateBody(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			result := validators.ValidateBody(tc.body, tc.requiredFields)
+			result := validators.ValidateBody(tc.body, tc.requiredFields...)
 			assert.Equal(t, tc.expectedResult, result)
 		})
 	}

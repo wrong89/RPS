@@ -10,7 +10,7 @@ func ValidateEmail(email string) bool {
 	return err == nil
 }
 
-func ValidateBody(body map[string]string, requiredFields []string) bool {
+func ValidateBody(body map[string]string, requiredFields ...string) bool {
 	for _, field := range requiredFields {
 		if _, ok := body[field]; !ok {
 			return false
