@@ -13,6 +13,7 @@ func NewToken(player entities.Player, duration time.Duration) (string, error) {
 
 	claims := token.Claims.(jwt.MapClaims)
 	claims["uid"] = player.ID
+	claims["name"] = player.Name
 	claims["email"] = player.Email
 	claims["exp"] = time.Now().Add(duration).Unix()
 
