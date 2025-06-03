@@ -17,6 +17,7 @@ import (
 // * Actions
 // task migrate -- up
 // task migrate -- down
+// task migrate -- reset
 func main() {
 	err := godotenv.Load()
 	if err != nil {
@@ -49,6 +50,19 @@ func main() {
 	}
 
 	switch migrationAction {
+	case "reset":
+		if err := m.Down(); err != nil {
+			if errors.Is(err, migrate.ErrNoChange) {
+				fmt.Println("no migrations to apply")
+				return
+			}
+		}
+		if err := m.Up(); err != nil {
+			if errors.Is(err, migrate.ErrNoChange) {
+				fmt.Println("no migrations to apply")
+				return
+			}
+		}
 	case "down":
 		if err := m.Down(); err != nil {
 			if errors.Is(err, migrate.ErrNoChange) {
