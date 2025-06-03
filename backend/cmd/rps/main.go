@@ -1,16 +1,21 @@
 package main
 
 import (
+	"context"
 	"log/slog"
 	"net/http"
 	"os"
 	"rps/internal/config"
+	"rps/internal/domain/logic/auth"
+	"rps/internal/http-server/handlers/authHandler"
 	mwLogger "rps/internal/http-server/middleware/logger"
 	"rps/internal/lib/logger/handlers/slogpretty"
+	"rps/internal/storage/postgres"
+	"time"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
-	"github.com/go-chi/render"
+	"github.com/joho/godotenv"
 )
 
 const (
@@ -20,9 +25,22 @@ const (
 )
 
 func main() {
+	err := godotenv.Load()
+	if err != nil {
+		panic("env not found")
+	}
+
 	cfg := config.MustLoad()
 
 	log := setupLogger(cfg.Env)
+
+	storage, err := postgres.New(context.TODO())
+	if err != nil {
+		log.Error("failed to initialize storage")
+		panic(err)
+	}
+
+	auth := auth.New(log, storage, storage, time.Hour)
 
 	log.Info(
 		"starting RPS app",
@@ -37,9 +55,8 @@ func main() {
 	router.Use(middleware.Recoverer)
 	router.Use(middleware.URLFormat)
 
-	router.Get("/test", func(w http.ResponseWriter, r *http.Request) {
-		render.JSON(w, r, `{"title": "SomeTitle"}`)
-	})
+	router.Post("/login", authHandler.LoginHandler(log, auth))
+	router.Post("/register", authHandler.RegisterHandler(log, auth))
 
 	log.Info("starting server", slog.String("addr", cfg.HTTPServer.Address))
 
