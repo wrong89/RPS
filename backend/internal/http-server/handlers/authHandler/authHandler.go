@@ -4,9 +4,9 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
-	"fmt"
 	"log/slog"
 	"net/http"
+	"rps/internal/http-server/helpers"
 	"rps/internal/lib/logger/sl"
 	"rps/internal/utils/validators"
 )
@@ -26,38 +26,23 @@ type authActions interface {
 }
 
 var (
-	errInvalidBody  = errors.New("invalid body")
 	errInvalidEmail = errors.New("invalid email")
 	errLogin        = errors.New("login error")
 	errRegister     = errors.New("register error")
 )
 
-type testStruct struct {
-	Token      string `json:"token"`
-	SomeRandom string `json:"some_random"`
-}
-
-type bodyData = map[string]string
-
 func LoginHandler(logger *slog.Logger, auth authActions) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		body, err := getBodyFromRequest(r)
+		body, err := helpers.GetValidatedBody(r, "email", "password")
 		if err != nil {
-			logger.Error(errInvalidBody.Error(), sl.Err(err))
-			http.Error(w, errInvalidBody.Error(), http.StatusBadRequest)
+			logger.Error(err.Error(), sl.Err(err))
+			http.Error(w, err.Error(), http.StatusBadRequest)
 			return
 		}
 
-		valid := validators.ValidateBody(body, "email", "password")
+		valid := validators.ValidateEmail(body["email"])
 		if !valid {
-			logger.Error("body is invalid")
-			http.Error(w, errInvalidBody.Error(), http.StatusBadRequest)
-			return
-		}
-
-		valid = validators.ValidateEmail(body["email"])
-		if !valid {
-			logger.Error("email is invalid")
+			logger.Error(errInvalidEmail.Error(), slog.String("email", body["email"]))
 			http.Error(w, errInvalidEmail.Error(), http.StatusBadRequest)
 			return
 		}
@@ -73,9 +58,10 @@ func LoginHandler(logger *slog.Logger, auth authActions) http.HandlerFunc {
 
 		w.Header().Set("Content-Type", "application/json")
 
-		response := testStruct{
-			Token:      token,
-			SomeRandom: "Hello World",
+		response := struct {
+			Token string `json:"token"`
+		}{
+			Token: token,
 		}
 
 		json.NewEncoder(w).Encode(response)
@@ -84,23 +70,16 @@ func LoginHandler(logger *slog.Logger, auth authActions) http.HandlerFunc {
 
 func RegisterHandler(logger *slog.Logger, auth authActions) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		body, err := getBodyFromRequest(r)
+		body, err := helpers.GetValidatedBody(r, "email", "password")
 		if err != nil {
-			logger.Error(errInvalidBody.Error(), sl.Err(err))
-			http.Error(w, errInvalidBody.Error(), http.StatusBadRequest)
+			logger.Error(err.Error(), sl.Err(err))
+			http.Error(w, err.Error(), http.StatusBadRequest)
 			return
 		}
 
-		valid := validators.ValidateBody(body, "name", "email", "password")
+		valid := validators.ValidateEmail(body["email"])
 		if !valid {
-			logger.Error("body is invalid")
-			http.Error(w, errInvalidBody.Error(), http.StatusBadRequest)
-			return
-		}
-
-		valid = validators.ValidateEmail(body["email"])
-		if !valid {
-			logger.Error("email is invalid")
+			logger.Error(errInvalidEmail.Error(), slog.String("email", body["email"]))
 			http.Error(w, errInvalidEmail.Error(), http.StatusBadRequest)
 			return
 		}
@@ -117,26 +96,5 @@ func RegisterHandler(logger *slog.Logger, auth authActions) http.HandlerFunc {
 			return
 		}
 
-		w.Header().Set("Content-Type", "application/json")
-
-		response := testStruct{
-			SomeRandom: "success",
-		}
-
-		json.NewEncoder(w).Encode(response)
 	}
-}
-
-func getBodyFromRequest(r *http.Request) (bodyData, error) {
-	const op = "authHandler.getBodyFromRequest"
-	defer r.Body.Close()
-
-	var result bodyData
-
-	err := json.NewDecoder(r.Body).Decode(&result)
-	if err != nil {
-		return result, fmt.Errorf("%s: %w", op, err)
-	}
-
-	return result, nil
 }
