@@ -1,18 +1,14 @@
 package entities
 
+import (
+	"time"
+)
+
 type Player struct {
-	ID       int    `json:"id"`
-	Name     string `json:"name"`
-	Email    string `json:"email"`
-	PassHash []byte `json:"-"`
-}
-
-func CreateNewPlayer(name, email, password string) Player {
-	var player Player
-
-	player.Name = name
-	player.Email = email
-	player.PassHash = []byte(password)
-
-	return player
+	ID        int
+	Name      string
+	Email     string
+	PassHash  string
+	CreatedAt time.Time
+	LastLogin *time.Time
 }
