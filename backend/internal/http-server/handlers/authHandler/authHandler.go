@@ -38,7 +38,7 @@ var (
 )
 
 type LoginResponse struct {
-	AccessToken string `json:"access_token"`
+	Token string `json:"token"`
 }
 
 func LoginHandler(logger *slog.Logger, auth authActions) http.HandlerFunc {
@@ -83,7 +83,7 @@ func LoginHandler(logger *slog.Logger, auth authActions) http.HandlerFunc {
 
 		w.Header().Set("Content-Type", "application/json")
 
-		response := LoginResponse{AccessToken: accessToken}
+		response := LoginResponse{Token: accessToken}
 
 		json.NewEncoder(w).Encode(response)
 	}
