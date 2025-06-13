@@ -19,7 +19,7 @@ type PlayerRepository interface {
 		ctx context.Context,
 		email,
 		name,
-		passwordHash string,
+		password string,
 	) (Player, error)
 	GetPlayerByEmail(
 		ctx context.Context,

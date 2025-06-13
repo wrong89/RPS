@@ -2,15 +2,20 @@ package main
 
 import (
 	"context"
+	"log"
 	"log/slog"
 	"net/http"
 	"os"
+	"os/signal"
 	"rps/internal/config"
 	"rps/internal/domain/logic/auth"
 	"rps/internal/http-server/handlers/authHandler"
+	"rps/internal/http-server/handlers/playerHandler"
+	authMiddleware "rps/internal/http-server/middleware/auth"
 	mwLogger "rps/internal/http-server/middleware/logger"
 	"rps/internal/lib/logger/handlers/slogpretty"
 	"rps/internal/storage/postgres"
+	"syscall"
 	"time"
 
 	"github.com/go-chi/chi/v5"
@@ -25,10 +30,7 @@ const (
 )
 
 func main() {
-	err := godotenv.Load()
-	if err != nil {
-		panic("env not found")
-	}
+	loadEnv()
 
 	cfg := config.MustLoad()
 
@@ -40,7 +42,7 @@ func main() {
 		panic(err)
 	}
 
-	auth := auth.New(log, storage, storage, time.Hour)
+	auth := auth.NewAuthService(log, storage, storage, os.Getenv("JWT_SECRET"), 24*time.Hour*7)
 
 	log.Info(
 		"starting RPS app",
@@ -55,10 +57,15 @@ func main() {
 	router.Use(middleware.Recoverer)
 	router.Use(middleware.URLFormat)
 
-	router.Post("/login", authHandler.LoginHandler(log, auth))
-	router.Post("/register", authHandler.RegisterHandler(log, auth))
+	router.Route("/api", func(r chi.Router) {
+		r.Route("/auth", func(r chi.Router) {
+			r.Post("/login", authHandler.LoginHandler(log, auth))
+			r.Post("/register", authHandler.RegisterHandler(log, auth))
+			// r.Post("/refresh", authHandler.RefreshTokenHandler(log, auth))
+		})
 
-	log.Info("starting server", slog.String("addr", cfg.HTTPServer.Address))
+		r.With(authMiddleware.AuthMiddleware(log, auth)).Get("/profile", playerHandler.ProfileHandler(log, storage))
+	})
 
 	srv := &http.Server{
 		Addr:         cfg.HTTPServer.Address,
@@ -68,11 +75,35 @@ func main() {
 		IdleTimeout:  cfg.HTTPServer.IdleTimeout,
 	}
 
+	signalChan := make(chan os.Signal, 1)
+	signal.Notify(signalChan, syscall.SIGINT, syscall.SIGTERM)
+
+	log.Info("starting server", slog.String("addr", cfg.HTTPServer.Address))
+
 	if err := srv.ListenAndServe(); err != nil {
 		log.Error("failed to start server")
 	}
 
+	sign := <-signalChan
+
+	log.Info("Gracefully Shutdown", slog.String("signal", sign.String()))
+
+	storage.CloseDb()
+
 	log.Error("server stopped")
+}
+
+func loadEnv() {
+	if err := godotenv.Load(); err != nil {
+		panic("env not found")
+	}
+
+	requiredVars := []string{"CONFIG_PATH", "DATABASE_URL", "JWT_TOKEN_SECRET"}
+	for _, v := range requiredVars {
+		if os.Getenv(v) == "" {
+			log.Fatalf("Required environment variable %s is not set", v)
+		}
+	}
 }
 
 func setupLogger(env string) *slog.Logger {
