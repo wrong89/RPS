@@ -42,7 +42,7 @@ func main() {
 		panic(err)
 	}
 
-	auth := auth.NewAuthService(log, storage, storage, os.Getenv("JWT_SECRET"), 24*time.Hour*7)
+	auth := auth.NewAuthService(log, storage, storage, os.Getenv("JWT_SECRET"), time.Duration(10*time.Hour))
 
 	log.Info(
 		"starting RPS app",
@@ -75,22 +75,25 @@ func main() {
 		IdleTimeout:  cfg.HTTPServer.IdleTimeout,
 	}
 
-	signalChan := make(chan os.Signal, 1)
-	signal.Notify(signalChan, syscall.SIGINT, syscall.SIGTERM)
+	stop := make(chan os.Signal, 1)
+	signal.Notify(stop, syscall.SIGTERM, syscall.SIGINT)
 
 	log.Info("starting server", slog.String("addr", cfg.HTTPServer.Address))
 
-	if err := srv.ListenAndServe(); err != nil {
-		log.Error("failed to start server")
-	}
+	go func() {
+		if err := srv.ListenAndServe(); err != nil {
+			log.Error("failed to start server")
+		}
+	}()
 
-	sign := <-signalChan
+	sign := <-stop
 
 	log.Info("Gracefully Shutdown", slog.String("signal", sign.String()))
 
 	storage.CloseDb()
 
-	log.Error("server stopped")
+	log.Info("server stopped")
+	os.Exit(0)
 }
 
 func loadEnv() {
