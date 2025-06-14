@@ -33,6 +33,47 @@ func (s *Storage) CloseDb() {
 	s.db.Close()
 }
 
+// CreatePlayerAndStatistic creates records in player and statistic tables and returns id of new player.
+func (s *Storage) CreatePlayerAndStatistic(ctx context.Context, email, name, passwordHash string) (entities.Player, error) {
+	var newPlayer entities.Player
+
+	tx, err := s.db.Begin(ctx)
+	if err != nil {
+		return entities.Player{}, err
+	}
+	defer tx.Rollback(ctx)
+
+	newPlayer, err = s.CreatePlayer(ctx, email, name, passwordHash)
+	if err != nil {
+		return entities.Player{}, err
+	}
+
+	statisticID, err := s.CreateDefaultStatistic(ctx)
+	if err != nil {
+		return entities.Player{}, err
+	}
+
+	err = s.CreatePlayerStatistic(ctx, newPlayer.ID, statisticID)
+	if err != nil {
+		return entities.Player{}, err
+	}
+
+	tx.Commit(ctx)
+	return newPlayer, nil
+}
+
+// CreatePlayerStatistic inserts data into player_statistic table.
+func (s *Storage) CreatePlayerStatistic(ctx context.Context, playerID, statisticID int) error {
+	query := `INSERT INTO player_statistic (player_id, statistic_id) VALUES(@playerID, @statisticID)`
+	args := pgx.NamedArgs{
+		"playerID":    playerID,
+		"statisticID": statisticID,
+	}
+
+	_, err := s.db.Exec(ctx, query, args)
+	return err
+}
+
 func (s *Storage) CreatePlayer(ctx context.Context, email, name, passwordHash string) (entities.Player, error) {
 	player := entities.Player{
 		Name:      name,
@@ -41,7 +82,7 @@ func (s *Storage) CreatePlayer(ctx context.Context, email, name, passwordHash st
 		CreatedAt: time.Now(),
 	}
 
-	query := `INSERT INTO player (name, email, password, created_at) VALUES(@name, @email, @password, @created_at) RETURNING id`
+	query := `INSERT INTO player (name, email, password, created_at) VALUES(@name, @email, @password, @created_at) RETURNING id;`
 	args := pgx.NamedArgs{
 		"name":       name,
 		"email":      email,
@@ -115,6 +156,19 @@ func (s *Storage) GetPlayerByID(ctx context.Context, id int) (entities.Player, e
 	}
 
 	return res, nil
+}
+
+func (s *Storage) CreateDefaultStatistic(ctx context.Context) (int, error) {
+	var id int
+
+	query := `INSERT INTO statistic DEFAULT VALUES RETURNING id;`
+
+	err := s.db.QueryRow(ctx, query).Scan(&id)
+	if err != nil {
+		return id, err
+	}
+
+	return id, nil
 }
 
 func (s *Storage) CreateRefreshToken(ctx context.Context, playerID int, ttl time.Duration) (entities.RefreshToken, error) {

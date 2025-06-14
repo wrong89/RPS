@@ -76,7 +76,7 @@ func (s *AuthService) Register(ctx context.Context, email, name, password string
 
 	s.log.Debug("trying to create player")
 
-	player, err = s.playerRepo.CreatePlayer(ctx, email, name, hashedPassword)
+	player, err = s.playerRepo.CreatePlayerAndStatistic(ctx, email, name, hashedPassword)
 	if err != nil {
 		return player, err
 	}
