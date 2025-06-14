@@ -7,24 +7,14 @@ CREATE TABLE IF NOT EXISTS player (
     last_login TIMESTAMP
 );
 
-CREATE TABLE IF NOT EXISTS refresh_tokens (
-    id INT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
-    player_id INT NOT NULL REFERENCES player(id) ON DELETE CASCADE,
-    token VARCHAR(255) UNIQUE NOT NULL,
-    expires_at TIMESTAMP NOT NULL,
-    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    revoked BOOLEAN NOT NULL DEFAULT FALSE
-);
-CREATE INDEX idx_refresh_tokens_token ON refresh_tokens(token);
-
 CREATE TABLE IF NOT EXISTS statistic (
     id INT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
-    matches_count INT,
-    winning_matches INT,
-    losing_matches INT,
-    drawn_matches INT,
-    rating_points INT,
-    win_rate FLOAT
+    matches_count INT DEFAULT 0,
+    winning_matches INT DEFAULT 0,
+    losing_matches INT DEFAULT 0,
+    drawn_matches INT DEFAULT 0,
+    rating_points INT DEFAULT 0,
+    win_rate FLOAT DEFAULT 0.0
 );
 
 
