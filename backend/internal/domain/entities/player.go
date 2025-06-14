@@ -21,6 +21,12 @@ type PlayerRepository interface {
 		name,
 		password string,
 	) (Player, error)
+	CreatePlayerAndStatistic(
+		ctx context.Context,
+		email,
+		name,
+		passwordHash string,
+	) (Player, error)
 	GetPlayerByEmail(
 		ctx context.Context,
 		email string,
